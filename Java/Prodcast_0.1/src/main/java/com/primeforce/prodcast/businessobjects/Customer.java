@@ -7,6 +7,26 @@ import java.util.List;
  */
 public class Customer {
 
+    public String getCellPhone() {
+        return cellPhone;
+    }
+
+    public void setCellPhone(String cellPhone) {
+        this.cellPhone = cellPhone;
+    }
+
+    private String cellPhone;
+
+    public String getUnitNumber() {
+        return unitNumber;
+    }
+
+    public void setUnitNumber(String unitNumber) {
+        this.unitNumber = unitNumber;
+    }
+
+    private String unitNumber;
+
     public List<Bill> getOutstandingBill() {
         return outstandingBill;
     }

@@ -1,6 +1,6 @@
 package com.primeforce.prodcast.dto;
 
-import com.primeforce.prodcast.dao.Order;
+import com.primeforce.prodcast.businessobjects.Order;
 
 /**
  * Created by sarathan732 on 4/29/2016.

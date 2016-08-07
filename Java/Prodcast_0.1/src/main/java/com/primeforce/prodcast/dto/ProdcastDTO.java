@@ -5,7 +5,6 @@ package com.primeforce.prodcast.dto;
  */
 public class ProdcastDTO {
     private boolean error;
-
     public String getErrorMessage() {
         return errorMessage;
     }

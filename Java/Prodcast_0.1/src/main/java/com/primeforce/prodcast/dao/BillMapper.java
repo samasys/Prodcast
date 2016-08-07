@@ -26,7 +26,7 @@ public class BillMapper implements RowMapper<Bill> {
         bill.setBillNumber( rs.getLong("bill_no"));
         bill.setBillAmount( rs.getFloat( "total_amt"));
         bill.setCustomerId( rs.getLong("cust_id"));
-        bill.setOutstandingBalance( rs.getFloat("outstanding_bal"));
+        bill.setOutstandingBalance( rs.getFloat("outstanding_balance"));
         bill.setBillDate(rs.getDate("bill_date"));
         return bill;
     }

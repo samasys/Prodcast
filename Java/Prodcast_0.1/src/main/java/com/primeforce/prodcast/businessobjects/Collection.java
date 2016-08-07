@@ -14,6 +14,16 @@ public class Collection {
     private String employeeName;
     private String paymentType;
 
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+
+    private String customerName;
+
     public long getBillId() {
         return billId;
     }

@@ -24,29 +24,31 @@ public class CustomerMapper implements RowMapper<Customer> {
     public Customer mapRow(ResultSet rs, int rowNum ) throws SQLException{
 
         Customer cust = new Customer();
-        cust.setId( rs.getLong( "customer_id"));
-        cust.setCustomerName(rs.getString("companyname"));
+        cust.setId( rs.getLong( "outlet_id"));
+        cust.setCustomerName(rs.getString("outlet_name"));
         if( !miniData ) {
-            cust.setBillingAddress1(rs.getString("billingaddress1"));
-            cust.setBillingAddress2(rs.getString("billingaddress2"));
-            cust.setBillingAddress3(rs.getString("billingaddress3"));
+            cust.setUnitNumber(rs.getString("landmark"));
+            cust.setBillingAddress1(rs.getString("address_1"));
+            cust.setBillingAddress2(rs.getString("address_2"));
+            cust.setBillingAddress3(rs.getString("address_3"));
             cust.setCity(rs.getString("city"));
             cust.setCountry(rs.getString("country_id"));
-            cust.setPostalCode(rs.getString("postalcode"));
-            cust.setState(rs.getString("stateorprovince"));
+            cust.setPostalCode(rs.getString("postal_code"));
+            cust.setState(rs.getString("state"));
 
-            cust.setCustomerType( rs.getString("customer_type"));
+            cust.setCustomerType( rs.getString("outlet_type"));
+
+            cust.setFirstname( rs.getString("firstname"));
+            cust.setLastname( rs.getString("lastname"));
+
+            cust.setPhonenumber( rs.getString("workphone"));
+            cust.setCellPhone(rs.getString("cellphone"));
+            
+            cust.setNotes( rs.getString("comments"));
+            cust.setEmailaddress( rs.getString( "outlet_email_id"));
+            cust.setWeekday( rs.getString( "week_day"));
+
             cust.setArea(rs.getString("area"));
-            cust.setFirstname( rs.getString("contactfirstname"));
-            cust.setLastname( rs.getString("contactlastname"));
-            cust.setTitle(rs.getString( "contacttitle"));
-            cust.setPhonenumber( rs.getString("phonenumber"));
-            cust.setFaxnumber( rs.getString("faxnumber"));
-            cust.setNotes( rs.getString("notes"));
-            cust.setEmailaddress( rs.getString( "emailaddress"));
-            cust.setWeekday( rs.getString( "wk_day"));
-
-
         }
         return cust;
     }
