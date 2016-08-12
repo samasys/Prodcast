@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import org.springframework.stereotype.Component;
 
 import java.sql.Date;
+import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -88,6 +89,23 @@ public class DatabaseManager {
         return true;
     }
 
+    public String getPasswordFromEmail(String emailId ) {
+        try {
+            return template.queryForObject(DBSql.GET_EMPLOYEE_EMAIL_FROM_EMAIL, new Object[]{emailId}, String.class);
+        }
+        catch(Exception er){
+            System.out.println( er.toString() );
+            return null;
+        }
+    }
+    public String changePassword(long employeeId , String oldPassword , String newPassword ){
+        int rowcount = template.update(DBSql.EMP_CHANGE_PASSWORD , new Object[]{newPassword, employeeId , oldPassword});
+        if( rowcount == 0 ){
+            return null;
+        }
+
+        return template.queryForObject( DBSql.GET_EMPLOYEE_EMAIL , new Object[]{employeeId} , String.class );
+    }
     public int createCustomer(long  employeeId, String customerName, String customerType , long areaId , String weekDay,  String firstName ,
                               String billingAddress1,String lastName , String emailAddress , String cellPhoneNumber,
                               String phoneNumber, String unitNumber,

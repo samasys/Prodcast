@@ -18,9 +18,10 @@ public class ExpenseMapper implements RowMapper<Expense> {
         expense.setExpenseDate( rs.getDate("exp_date").toString() );
         expense.setAccount( rs.getString("account"));
         expense.setExpenseCategory(rs.getString("catg_desc"));
+        expense.setCategoryId(rs.getString("catg_id"));
         expense.setExpenseAmount(rs.getFloat("amount"));
         expense.setDescription( rs.getString("desc1"));
-
+        expense.setDescription2(rs.getString("desc2"));
         return expense;
     }
 }

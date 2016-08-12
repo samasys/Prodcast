@@ -4,10 +4,17 @@ import com.primeforce.prodcast.businessobjects.*;
 import com.primeforce.prodcast.businessobjects.Collection;
 import com.primeforce.prodcast.dao.DatabaseManager;
 import com.primeforce.prodcast.dto.*;
+import com.primeforce.prodcast.util.Amazon;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import javax.inject.Named;
+import javax.mail.Authenticator;
+import javax.mail.Message;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.text.SimpleDateFormat;
@@ -289,7 +296,61 @@ public class GlobalRest {
         }
         return dto;
     }
+    @GET
+    @Path("retrievePassword")
+    @Produces(MediaType.APPLICATION_JSON)
+    public ProdcastDTO retrievePassword(@QueryParam("emailId") String emailId) throws Exception{
 
+        ProdcastDTO dto = new ProdcastDTO();
+        try {
+            if(emailId != null ) {
+                emailId = emailId.toLowerCase();
+
+                String password = databaseManager.getPasswordFromEmail(emailId);
+
+                if (password != null) {
+                    Amazon.sendEmail(emailId, "Password email from PRODCAST", "Your password is "+password+"\r\n");
+                } else {
+                    dto.setError(true);
+                    dto.setErrorMessage("The email id is not registered with PRODCAST");
+                }
+            }
+        } catch (Exception er){
+            er.printStackTrace();
+            dto.setError(true);
+            dto.setErrorMessage(er.toString());
+        }
+
+        return dto;
+
+
+    }
+    @GET
+    @Path("changePassword")
+    @Produces(MediaType.APPLICATION_JSON)
+    public ProdcastDTO changePassword(@QueryParam("employeeId") String employeeId, @QueryParam("oldPassword") String oldPassword, @QueryParam("newPassword") String newPassword) throws Exception{
+
+        ProdcastDTO dto = new ProdcastDTO();
+        try {x
+            String email = databaseManager.changePassword(Long.parseLong(employeeId) , oldPassword , newPassword );
+            if( email == null ){
+                dto.setError(true);
+                dto.setErrorMessage("The Old Password did not match. Please reenter old password again");
+
+            }
+            else {
+                Amazon.sendEmail(email, "Password changed email from PRODCAST", "Your password has been changed in PRODCAST\r\n");
+            }
+        } catch (Exception er){
+            er.printStackTrace();
+            dto.setError(true);
+            dto.setErrorMessage(er.toString());
+        }
+
+        return dto;
+
+
+    }
     @GET
     @Path("salesReport")
     @Produces(MediaType.APPLICATION_JSON)

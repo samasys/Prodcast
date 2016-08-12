@@ -336,16 +336,38 @@ public class DistributorRest {
     @POST
     @Path("saveExpense")
     @Produces(MediaType.APPLICATION_JSON)
-    public ProdcastDTO saveExpense(@FormParam("expenseDate") String expenseDate, @FormParam("account") String account, @FormParam("catgId") int categoryId,
+    public ExpenseDTO saveExpense(@FormParam("expenseDate") String expenseDate, @FormParam("account") String account, @FormParam("catgId") int categoryId,
                                    @FormParam("desc1") String desc1, @FormParam("desc2") String desc2,
                                    @FormParam("amount") double amount, @FormParam("payMode") String paymode, @FormParam("employeeId") String userId) {
-        ProdcastDTO dto = new ProdcastDTO();
+        ExpenseDTO dto = new ExpenseDTO();
         try {
             int rowCount = databaseManager.saveExpense(0, expenseDate, account, categoryId, desc1, desc2, amount, paymode, userId);
             if (rowCount == 0) {
                 dto.setError(true);
                 dto.setErrorMessage("Unable to save expense. Please try again!");
             }
+            List<Expense> expenses = databaseManager.fetchExpenseForDistributor(new java.sql.Date(System.currentTimeMillis()) , new java.sql.Date(System.currentTimeMillis()) , userId );
+
+            dto.setExpenses( expenses );
+
+        } catch (Exception er) {
+            dto.setError(true);
+            dto.setErrorMessage(er.toString());
+            er.printStackTrace();
+        }
+        return dto;
+    }
+
+    @GET
+    @Path("fetchExpense")
+    @Produces(MediaType.APPLICATION_JSON)
+    public ExpenseDTO fetchExpenses(@QueryParam("employeeId") String userId) {
+        ExpenseDTO dto = new ExpenseDTO();
+        try {
+
+            List<Expense> expenses = databaseManager.fetchExpenseForDistributor(new java.sql.Date(System.currentTimeMillis()) , new java.sql.Date(System.currentTimeMillis()) , userId );
+            dto.setExpenses( expenses );
+
         } catch (Exception er) {
             dto.setError(true);
             dto.setErrorMessage(er.toString());

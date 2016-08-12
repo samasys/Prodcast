@@ -13,7 +13,9 @@ public class DBSql {
     public final static String PRODUCT_SEARCH_SQL = " select * from products where dist_id = (select dist_manf_id from employees where employee_id = ? ) order by product_name";
     public final static String OUTSTANDING_BILL_SEARCH = "select oh.cust_id , oh.bill_no , oh.total_amt , oh.bill_date , oh.outstanding_balance ,'' as companyname from  order_header oh where oh.cust_id = ? and oh.outstanding_balance >0 ";
     public final static String COLLECTION_UPDATE_SQL = "call sp_collection_update (? , ? , ? ) ";
-
+    public final static String EMP_CHANGE_PASSWORD = "update user_access set password = ? where employee_id = ? and password = ?";
+    public final static String GET_EMPLOYEE_EMAIL = "select email_id from employees where employee_id = ?";
+    public final static String GET_EMPLOYEE_EMAIL_FROM_EMAIL = "select password from user_access where email_id = ?";
     public final static String ORDER_DETAILS_SQL = "insert into order_dtl (orderdetailid, product_id , quantity, unitprice, amount,sales_tax,other_tax,subtotal) values( ? , ? , ?, " +
             "(select unitprice from products where product_id = ?) , " +
             "quantity*unitprice, " +

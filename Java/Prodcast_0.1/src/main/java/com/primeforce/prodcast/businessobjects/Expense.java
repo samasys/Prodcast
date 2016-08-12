@@ -8,6 +8,35 @@ public class Expense {
     private String expenseDate;
     private String account;
 
+    public String getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(String categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public String getDescription2() {
+        return description2;
+    }
+
+    public void setDescription2(String description2) {
+        this.description2 = description2;
+    }
+
+    public String getPayMode() {
+        return payMode;
+    }
+
+    public void setPayMode(String payMode) {
+        this.payMode = payMode;
+    }
+
+    private String categoryId;
+    private String description2;
+    private String payMode;
+
+
     public String getExpenseDate() {
         return expenseDate;
     }
