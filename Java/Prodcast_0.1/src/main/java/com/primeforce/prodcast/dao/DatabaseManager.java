@@ -66,7 +66,7 @@ public class DatabaseManager {
         return template.update( DBSql.COLLECTION_UPDATE_SQL , new Object[]{dealerId, billId , amount });
     }
 
-    public boolean saveOrder(Order order, float paymentAmount){
+    public long saveOrder(Order order, float paymentAmount){
 
         SimpleJdbcCall call = new  SimpleJdbcCall ( template.getDataSource() ).withProcedureName("sp_create_order");
         SqlParameterSource in = new MapSqlParameterSource().addValue("in_emp_id" , order.getEmployeeId() ).addValue("in_customer_id" , order.getCustomerId() );
@@ -81,12 +81,18 @@ public class DatabaseManager {
             template.update( DBSql.ORDER_DETAILS_SQL , new Object[]{orderDetailId , entry.getProductId(), entry.getQuantity() , entry.getProductId() , entry.getProductId() , entry.getProductId() });
         }
 
-        template.update(DBSql.ORDER_TOTAL_SQL , new Object[]{orderDetailId, orderDetailId});
+        template.update(DBSql.ORDER_TOTAL_SQL , new Object[]{orderDetailId, order.getEmployeeId(),orderDetailId});
+        if( order.getDiscountType()==2 ) {
+            template.update(DBSql.ORDER_UPDATE_DISCOUNT_PERCENTAGE, new Object[]{order.getDiscount(), orderDetailId});
+        }
+        else if (order.getDiscountType()==1){
+            template.update(DBSql.ORDER_UPDATE_DISCOUNT_VALUE, new Object[]{order.getDiscount(), orderDetailId});
+        }
 
         if( paymentAmount > 0 ){
             updateCollectionPayment( order.getEmployeeId() , billNumber, paymentAmount );
         }
-        return true;
+        return billNumber;
     }
 
     public String getPasswordFromEmail(String emailId ) {
@@ -150,11 +156,18 @@ public class DatabaseManager {
         return template.query( DistributorDBSql.DISTRIBUTOR_GET_EMP_SQL, new Object[]{employeeId }, new EmployeeMapper() );
     }
 
-    public List<Expense> fetchExpenseForDistributor(Date startDate , Date endDate , String employeeId ){
+    public List<Expense> fetchExpenseForDistributor(Date startDate , String employeeId ){
 
+            Date endDate = new java.sql.Date( startDate.getTime()+24*60*60*1000);
             return template.query( DistributorDBSql.DISTRIBUTOR_GET_EXP_SQL , new Object[]{employeeId , startDate , endDate }, new ExpenseMapper() );
 
     }
+    public List<Expense> fetchExpenseReportForDistributor(Date startDate , Date endDate , String employeeId ){
+
+        return template.query( DistributorDBSql.DISTRIBUTOR_GET_EXP_SQL_REPORT , new Object[]{employeeId , startDate , endDate }, new ExpenseMapper() );
+
+    }
+
     public Long fetchEmailInUse(String emailId ){
         try {
             return template.queryForObject(DistributorDBSql.CHECK_EMAIL_UNIQUE, new Object[]{emailId}, Long.class);
@@ -220,12 +233,13 @@ public class DatabaseManager {
     public List<Product> saveProductForDistributor(long employeeId , long productId, String productName, String productDesc, String productSku, float unitPrice, String priceType,  long categoryId , long subCategoryId , long brandId, boolean active, String salesTaxRate, String otherTaxRate ){
         //(product_name , product_desc, product_sku, distributor_id ,  manufacturer_id ,  unitprice, price_type , prod_catg_id , prod_sub_catg_id , product_brand_id , active,  user_id , updt_dt_tm , ip_address)
         int rowcount = 0;
-        if( productId == 0 ) {
-            rowcount = template.update(DistributorDBSql.DISTRIBUTOR_CREATE_PRODUCT_SQL, new Object[]{productName, productDesc, productSku, employeeId, employeeId, unitPrice, priceType, categoryId, subCategoryId, brandId, active, employeeId, salesTaxRate, otherTaxRate});
-        }
-        else{
-            rowcount = template.update(DistributorDBSql.DISTRIBUTOR_CREATE_PRODUCT_SQL, new Object[]{productName, productDesc, productSku, employeeId, employeeId, unitPrice, priceType, categoryId, subCategoryId, brandId, active, employeeId , salesTaxRate, otherTaxRate});
-        }
+         rowcount = template.update(DistributorDBSql.DISTRIBUTOR_CREATE_PRODUCT_SQL, new Object[]{productName, productDesc, productSku, employeeId, employeeId, unitPrice, priceType, categoryId, subCategoryId, brandId, active, employeeId, salesTaxRate, otherTaxRate});
+        if( rowcount != 1 ) return null;
+        return fetchProductsForDistributor( employeeId );
+    }
+	public List<Product> updateProductForDistributor(long employeeId , long productId, String productName, String productDesc, String productSku, float unitPrice, String priceType,  long categoryId , long subCategoryId , long brandId, boolean active,String salesTaxRate, String otherTaxRate ){
+        //(product_name , product_desc, product_sku, distributor_id ,  manufacturer_id ,  unitprice, price_type , prod_catg_id , prod_sub_catg_id , product_brand_id , active,  user_id , updt_dt_tm , ip_address)
+        int rowcount = template.update(DistributorDBSql.DISTRIBUTOR_UPDATE_PRODUCT_SQL, new Object[]{productName, productDesc, productSku, unitPrice, priceType, categoryId, subCategoryId, brandId, active,salesTaxRate, otherTaxRate, employeeId,productId});
         if( rowcount != 1 ) return null;
         return fetchProductsForDistributor( employeeId );
     }
@@ -355,10 +369,26 @@ cust_name,customer_type,firstname,lastname,title," +
         int rowCount = template.update(DistributorDBSql.CREATE_EXPENSE_SQL, args);
         return rowCount;
     }
+public int updateExpense(int refNo, long expenseId, String account, int categoryId, String desc1, String desc2, double amount, String payMode, String userId ,String expenseDate) throws ParseException{
+    DateFormat df = new SimpleDateFormat( DATE_FORMAT );
+    if (expenseDate == null ){
+        expenseDate = df.format(new java.util.Date());
+    }
+
+    Object[] args = new Object[] {account, categoryId, desc1, desc2, amount, payMode, userId, new java.sql.Date( df.parse( expenseDate).getTime()), expenseId};
+        int rowCount = template.update(DistributorDBSql.UPDATE_EXPENSE_SQL, args);
+        return rowCount;
+    }
 
     public int saveExpenseCategory(String categoryDesc, String userId ){
         Object[] args = new Object[] {categoryDesc, userId, Long.parseLong( userId )};
         int rowCount = template.update(DistributorDBSql.CREATE_EXPENSE_CATEGORY, args);
+        return rowCount;
+    }
+ 	public int updateExpenseCategory(long categoryId, String categoryDesc, String userId ){
+        Object[] args = new Object[] {categoryDesc, userId,categoryId};
+
+        int rowCount = template.update(DistributorDBSql.UPDATE_EXPENSE_CATEGORY, args);
         return rowCount;
     }
 
@@ -366,4 +396,11 @@ cust_name,customer_type,firstname,lastname,title," +
         Object[] args = new Object[]{employeeId};
         return template.query( DistributorDBSql.DISTRIBUTOR_GET_EXPENSE_CATEGORY , args, new ExpenseCategoryMapper());
     }
+
+    public List<Country> fetchCountries(){
+
+        return template.query(DBSql.COUNTRY_SQL, (Object[])null,new CountryMapper());
+
+    }
+
 }

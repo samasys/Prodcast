@@ -256,10 +256,22 @@ public class DistributorRest {
     public AdminDTO<List<Product>> saveProduct(@FormParam("employeeId") String employeeId, @FormParam("productId") String productId, @FormParam("productName") String productName, @FormParam("productDesc") String productDesc, @FormParam("productSku") String productSku, @FormParam("unitPrice") String unitPrice,@FormParam("priceType") String priceType,@FormParam("categoryId") String categoryId, @FormParam("subCategoryId") String subCategoryId, @FormParam("brandId") String brandId, @FormParam("active") String active ,@FormParam("salesTax") String salesTaxRate, @FormParam("otherTax") String otherTaxRate  ){
         AdminDTO<List<Product>> dto = new AdminDTO<List<Product>>();
         try {
-            List<Product> result = databaseManager.saveProductForDistributor(Long.parseLong(employeeId), Long.parseLong( productId ) , productName , productDesc , productSku , Float.parseFloat(unitPrice) , priceType,Long.parseLong(categoryId ) , Long.parseLong(subCategoryId ) , Long.parseLong(brandId ), Boolean.parseBoolean( active ) , salesTaxRate, otherTaxRate );
+            List<Product> result;
+            System.out.println("Product>>"+productId+"<<");
+			 if(productId==null || productId.trim().length()==0 || productId.equals("0"))
+            {
+                System.out.println("Saving Product");
+                result=databaseManager.saveProductForDistributor(Long.parseLong(employeeId), 0 , productName , productDesc , productSku , Float.parseFloat(unitPrice) , priceType,Long.parseLong(categoryId ) , Long.parseLong(subCategoryId ) , Long.parseLong(brandId ), Boolean.parseBoolean( active ) , salesTaxRate, otherTaxRate );
+            }
+            else
+            {
+                System.out.println("Updating Product");
+                result = databaseManager.updateProductForDistributor(Long.parseLong(employeeId), Long.parseLong( productId ) , productName , productDesc , productSku , Float.parseFloat(unitPrice) , priceType,Long.parseLong(categoryId ) , Long.parseLong(subCategoryId ) , Long.parseLong(brandId ), Boolean.parseBoolean( active ),salesTaxRate, otherTaxRate );
+            }
+           
             if( result == null ) {
                 dto.setError(true);
-                dto.setErrorMessage("Unable to save brand");
+                dto.setErrorMessage("Unable to save product");
             }
             else
                 dto.setResult( result );
@@ -336,17 +348,28 @@ public class DistributorRest {
     @POST
     @Path("saveExpense")
     @Produces(MediaType.APPLICATION_JSON)
-    public ExpenseDTO saveExpense(@FormParam("expenseDate") String expenseDate, @FormParam("account") String account, @FormParam("catgId") int categoryId,
+    public ExpenseDTO saveExpense(@FormParam("expenseId") String expenseId,@FormParam("expenseDate") String expenseDate, @FormParam("account") String account, @FormParam("catgId") int categoryId,
                                    @FormParam("desc1") String desc1, @FormParam("desc2") String desc2,
                                    @FormParam("amount") double amount, @FormParam("payMode") String paymode, @FormParam("employeeId") String userId) {
         ExpenseDTO dto = new ExpenseDTO();
         try {
-            int rowCount = databaseManager.saveExpense(0, expenseDate, account, categoryId, desc1, desc2, amount, paymode, userId);
+            int rowCount;
+            System.out.println("ExpenseId==>"+expenseId+"<<");
+			if(expenseId==null || expenseId.trim().length()==0)
+            {
+                rowCount  = databaseManager.saveExpense(0, expenseDate, account, categoryId, desc1, desc2, amount, paymode, userId);
+            }
+            else
+            {
+                rowCount = databaseManager.updateExpense(0,Long.parseLong(expenseId),account, categoryId, desc1, desc2, amount, paymode, userId,expenseDate);
+
+            }
+           
             if (rowCount == 0) {
                 dto.setError(true);
                 dto.setErrorMessage("Unable to save expense. Please try again!");
             }
-            List<Expense> expenses = databaseManager.fetchExpenseForDistributor(new java.sql.Date(System.currentTimeMillis()) , new java.sql.Date(System.currentTimeMillis()) , userId );
+            List<Expense> expenses = databaseManager.fetchExpenseForDistributor( new java.sql.Date(System.currentTimeMillis())  , userId );
 
             dto.setExpenses( expenses );
 
@@ -365,7 +388,7 @@ public class DistributorRest {
         ExpenseDTO dto = new ExpenseDTO();
         try {
 
-            List<Expense> expenses = databaseManager.fetchExpenseForDistributor(new java.sql.Date(System.currentTimeMillis()) , new java.sql.Date(System.currentTimeMillis()) , userId );
+            List<Expense> expenses = databaseManager.fetchExpenseForDistributor(new java.sql.Date(System.currentTimeMillis()) , userId );
             dto.setExpenses( expenses );
 
         } catch (Exception er) {
@@ -380,10 +403,18 @@ public class DistributorRest {
     @Path("saveExpenseCategory")
     @Produces(MediaType.APPLICATION_JSON)
     public AdminDTO<List<ExpenseCategory>> saveExpenseCategory(@FormParam("catgDesc") String catgDesc,
-                                           @FormParam("employeeId") String userId) {
+                                           @FormParam("employeeId") String userId,@FormParam("expenseCategoryId") String expenseCategoryId) {
         AdminDTO<List<ExpenseCategory>> dto = new AdminDTO<List<ExpenseCategory>>();
         try {
-            int rowCount = databaseManager.saveExpenseCategory(catgDesc, userId);
+            int rowCount;
+			if(expenseCategoryId==null) {
+                rowCount = databaseManager.saveExpenseCategory(catgDesc, userId);
+            }
+            else
+            {
+                rowCount = databaseManager.updateExpenseCategory(Long.parseLong(expenseCategoryId),catgDesc, userId);
+            }
+            
             if (rowCount == 0) {
                 dto.setError(true);
                 dto.setErrorMessage("Unable to save expense. Please try again!");

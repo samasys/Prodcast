@@ -9,7 +9,25 @@ public class OrderDetailDTO extends ProdcastDTO{
     private String customerId;
     private String employeeId;
     private String paymentAmount;
+    private String discountValue;
+    private String discountType;
     private List<OrderEntryDTO> entries;
+
+    public String getDiscountValue() {
+        return discountValue;
+    }
+
+    public void setDiscountValue(String discountValue) {
+        this.discountValue = discountValue;
+    }
+
+    public String getDiscountType() {
+        return discountType;
+    }
+
+    public void setDiscountType(String discountType) {
+        this.discountType = discountType;
+    }
 
     public String getPaymentAmount() {
         return paymentAmount;

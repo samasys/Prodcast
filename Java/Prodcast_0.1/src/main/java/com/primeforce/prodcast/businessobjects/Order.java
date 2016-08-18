@@ -13,10 +13,56 @@ public class Order {
     private long billNumber;
     private long employeeId;
     private long customerId;
+    private String customerEmail;
+
+    public String getCustomerEmail() {
+        return customerEmail;
+    }
+
+    public void setCustomerEmail(String customerEmail) {
+        this.customerEmail = customerEmail;
+    }
+
+    public String getDistributorEmail() {
+        return distributorEmail;
+    }
+
+    public void setDistributorEmail(String distributorEmail) {
+        this.distributorEmail = distributorEmail;
+    }
+
+    public String getEmployeeEmail() {
+        return employeeEmail;
+    }
+
+    public void setEmployeeEmail(String employeeEmail) {
+        this.employeeEmail = employeeEmail;
+    }
+
+    private String distributorEmail;
+    private String employeeEmail;
+    public float getDiscount() {
+        return discount;
+    }
+
+    public void setDiscount(float discount) {
+        this.discount = discount;
+    }
+
+    public int getDiscountType() {
+        return discountType;
+    }
+
+    public void setDiscountType(int discountType) {
+        this.discountType = discountType;
+    }
+
     private Timestamp createTime;
     private float totalAmount;
     private String customerName;
     private String employeeName;
+    private float discount=0f;
+    private int discountType=0;
 
     public List<Collection> getCollectionEntries() {
         return collectionEntries;

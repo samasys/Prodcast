@@ -8,6 +8,7 @@ public class DBSql {
     //public final static String LOGIN_SQL = "select emp.employee_id, emp.firstname, emp.lastname, emp.type, emp_access.user_name  from employees emp, emp_access emp_access where emp_access.emp_id = emp.employee_id and emp_access.user_name=? and emp_access.password=?";
     public final static String CUSTOMER_SEARCH_SQL = "select * from outlet_dtl where area in ( select area_id from employee_areamap where employee_id = ? ) order by outlet_name";
     public final static String CUSTOMER_SEARCH_SQL_D = "select * from outlet_dtl where area in ( select area_id from area_dtl where dist_id = (select dist_manf_id from employees where employee_id =? ) ) order by outlet_name";
+    public final static String COUNTRY_SQL="select * from country";
     public final static String GET_EMP_ROLE = "select user_role from user_access where employee_id = ?";
     public final static String CUSTOMER_SQL = "select outlet_id , outlet_name , address_1, address_2, address_3, city, landmark, state, postal_code, country_id, outlet_type, area, firstname, lastname, title, cellphone, workphone , outlet_name, outlet_email_id, comments, week_day  from outlet_dtl where outlet_id=? ";
     public final static String PRODUCT_SEARCH_SQL = " select * from products where dist_id = (select dist_manf_id from employees where employee_id = ? ) order by product_name";
@@ -23,12 +24,13 @@ public class DBSql {
             "(select other_tax from products where product_id = ?), " +
             "(amount+amount*((sales_tax+other_tax)/100))" +
             ")";
-    public final static String ORDER_TOTAL_SQL ="update order_header set total_amt = (select sum( subtotal) from order_dtl where orderdetailid = ? ) , outstanding_balance = total_amt where orderdetailid = ? ";
-
-    public final static String FETCH_ORDER_SQL = " select oh.bill_date, oh.orderdetailid , oh.bill_no, oh.cust_id, cust.outlet_name, oh.emp_id , "+
-    "emp.firstname , emp.lastname, oh.total_amt, oh.enter_dt_tm , oh.outstanding_balance "+
-    "from order_header oh , employees emp , outlet_dtl cust where "+
-    "oh.cust_id = cust.outlet_id  and oh.emp_id = emp.employee_id and oh.bill_no=?";
+    public final static String ORDER_TOTAL_SQL ="update order_header set total_amt = (select sum( subtotal) from order_dtl where orderdetailid = ? ) , outstanding_balance = total_amt , distributor_id=(select dist_manf_id from employees where employee_id = ?) where orderdetailid = ? ";
+    public final static String ORDER_UPDATE_DISCOUNT_PERCENTAGE="update order_header set discount=?, discount_type=2, total_amt = (total_amt*(1-discount)/100) where orderdetailid = ? ";
+    public final static String ORDER_UPDATE_DISCOUNT_VALUE="update order_header set discount=?, discount_type=1, total_amt = (total_amt-discount) where orderdetailid = ? ";
+    public final static String FETCH_ORDER_SQL = " select cust.outlet_email_id , emp.email_id , dst.email_id as dist_email_id  , oh.bill_date, oh.orderdetailid , oh.bill_no, oh.cust_id, cust.outlet_name, oh.emp_id , "+
+    "emp.firstname , emp.lastname, oh.total_amt, oh.enter_dt_tm , oh.outstanding_balance,oh.discount,oh.discount_type "+
+    "from order_header oh , employees emp , outlet_dtl cust ,dist_dtl dst where "+
+    "oh.cust_id = cust.outlet_id  and oh.emp_id = emp.employee_id and dst.dist_id = oh.distributor_id and oh.bill_no=?";
     public final static String FETCH_ORDER_DTL_SQL = "select od.product_id , od.quantity , od.unitprice, od.amount , pr.product_name,od.sales_tax, od.other_tax, od.subtotal from order_dtl od, products pr where od.product_id = pr.product_id and od.orderdetailid = ?";
     public final static String FETCH_ORDER_COLLECTION_SQL = "select cd.bill_no, cd.amount_paid, cd.emp_id , emp.firstname , emp.lastname, cd.payment_type, cd.payment_date , '' as outlet_name from collection_dtl cd , employees emp where emp.employee_id = cd.emp_id and bill_no=?";
 

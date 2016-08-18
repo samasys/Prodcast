@@ -272,6 +272,13 @@ public class GlobalRest {
             Order order = new Order();
             order.setCustomerId( Long.parseLong( orderDto.getCustomerId()) );
             order.setEmployeeId( Long.parseLong( orderDto.getEmployeeId()) );
+            try {
+                order.setDiscount(Float.parseFloat(orderDto.getDiscountValue()));
+                order.setDiscountType(Integer.parseInt(orderDto.getDiscountType()));
+            }
+            catch(Exception er){
+                //NumberFormatException - Ignore.
+            }
             List<OrderEntry> orderEntries = new LinkedList<OrderEntry>();
             order.setOrderEntries( orderEntries );
             for (OrderEntryDTO entryDto:orderDto.getEntries()) {
@@ -282,11 +289,18 @@ public class GlobalRest {
             }
 
             float paymentAmount = Float.parseFloat( orderDto.getPaymentAmount());
-            databaseManager.saveOrder(order,paymentAmount);
+            long billNumber = databaseManager.saveOrder(order,paymentAmount);
 
             Customer customer  = databaseManager.getCustomer( orderDto.getCustomerId() );
             customer.setOutstandingBill(  databaseManager.fetchOutstandingBills(orderDto.getCustomerId() ));
             dto.setCustomer( customer );
+
+            try{
+                Amazon.sendOrderEmail( databaseManager.fetchOrder( billNumber ));
+            }
+            catch(Exception er){
+                er.printStackTrace();
+            }
 
             dto.setError( false );
         } catch (Exception er) {
@@ -331,7 +345,7 @@ public class GlobalRest {
     public ProdcastDTO changePassword(@QueryParam("employeeId") String employeeId, @QueryParam("oldPassword") String oldPassword, @QueryParam("newPassword") String newPassword) throws Exception{
 
         ProdcastDTO dto = new ProdcastDTO();
-        try {x
+        try {
             String email = databaseManager.changePassword(Long.parseLong(employeeId) , oldPassword , newPassword );
             if( email == null ){
                 dto.setError(true);
@@ -410,7 +424,7 @@ public class GlobalRest {
             if( selectedEmployeeId!= null && selectedEmployeeId.equals("ALL") ){
                 orders = databaseManager.fetchSalesReportForDistributor(startDate, endDate , Long.parseLong(employeeId ));
                 collections = databaseManager.fetchCollectionReportForDistributor(startDate, endDate , Long.parseLong(employeeId ));
-                expenses = databaseManager.fetchExpenseForDistributor( startDate,  endDate , employeeId);
+                expenses = databaseManager.fetchExpenseReportForDistributor( startDate,  endDate , employeeId);
             }
 
             else {
@@ -420,7 +434,7 @@ public class GlobalRest {
 
                 orders = databaseManager.fetchSalesReport(startDate, endDate, Long.parseLong(employeeId));
                 collections = databaseManager.fetchCollectionReport(startDate, endDate, Long.parseLong(employeeId));
-                expenses = databaseManager.fetchExpenseForDistributor( startDate,  endDate , employeeId);
+                expenses = databaseManager.fetchExpenseReportForDistributor( startDate,  endDate , employeeId);
             }
             dto.setExpenses( expenses);
             float totalSales =0;
@@ -454,6 +468,23 @@ public class GlobalRest {
             dto.setOrders( orders );
             dto.setCollections( collections );
 
+        }
+        catch(Exception er){
+            er.printStackTrace();
+            dto.setError( true );
+            dto.setErrorMessage( er.toString() );
+        }
+        return dto;
+    }
+    @GET
+    @Path("getCountries")
+    @Produces(MediaType.APPLICATION_JSON)
+    public AdminDTO getCountries() {
+        AdminDTO dto = new AdminDTO();
+
+        try {
+            List countries = databaseManager.fetchCountries();
+            dto.setResult( countries );
         }
         catch(Exception er){
             er.printStackTrace();
