@@ -1,6 +1,13 @@
 package com.primeforce.prodcast.util;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.sns.AmazonSNS;
 import com.amazonaws.services.sns.AmazonSNSClient;
+import com.amazonaws.services.sns.AmazonSNSClientBuilder;
 import com.amazonaws.services.sns.model.MessageAttributeValue;
 import com.amazonaws.services.sns.model.PublishRequest;
 import com.amazonaws.services.sns.model.PublishResult;
@@ -57,7 +64,7 @@ public class Amazon {
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.starttls.required", "true");
-        props.put("mail.debug", "true");
+        //props.put("mail.debug", "true");
         props.put("mail.smtp.host" , HOST);
 
         // Create a Session object to represent a mail session with the specified properties.
@@ -148,12 +155,12 @@ public class Amazon {
             InternetAddress emailAddr = new InternetAddress(email);
             emailAddr.validate();
             return emailAddr;
-        } catch (AddressException ex) {
+        } catch (Exception ex) {
             return null;
         }
 
     }
-    /*
+
     public static void main(String[] args)  throws Exception{
 
         Order order = new Order();
@@ -178,15 +185,16 @@ public class Amazon {
         entries.add( entry );
         order.setOrderEntries( entries );
         //Amazon.sendOrderEmail( order );
-        sendSMS();
+        //sendSMS();
         //Amazon.sendEmail("t_saravanan@hotmail.com", "Password email from PRODCAST" , "Your password is welcome");
     }
 
-    public static void sendSMS(){
+    public static void sendSMS(String msg,String phoneNumber){
+        System.out.println("Sending SMS to "+phoneNumber+" Message="+msg);
         Map<String, MessageAttributeValue> smsAttributes =
                 new HashMap<String, MessageAttributeValue>();
         smsAttributes.put("AWS.SNS.SMS.SenderID", new MessageAttributeValue()
-                .withStringValue("t_Saravanan@hotmail.com") //The sender ID shown on the device.
+                .withStringValue("2168680677") //The sender ID shown on the device.
                 .withDataType("String"));
         smsAttributes.put("AWS.SNS.SMS.MaxPrice", new MessageAttributeValue()
                 .withStringValue("0.50") //Sets the max price to 0.50 USD.
@@ -195,21 +203,36 @@ public class Amazon {
                 .withStringValue("Promotional") //Sets the type to promotional.
                 .withDataType("String"));
 
-        AmazonSNSClient snsClient = new AmazonSNSClient();
-        String message = "New PRODCAST Order";
-        String phoneNumber = "+16464316250";
+        AmazonSNS snsClient = null;
+
+        String message = msg;
+        String phoneNo = phoneNumber;
+
+        final BasicAWSCredentials awsCreds = new BasicAWSCredentials("AKIAIC3PKI4JEI2BOEBA", "GiQd6KnowSlstjytR6qf1oVb0mNGsWDzI6IIPd7X");
+
+        snsClient = AmazonSNSClientBuilder.standard().withRegion(Regions.US_WEST_2).withCredentials(new AWSCredentialsProvider() {
+            @Override
+            public AWSCredentials getCredentials() {
+                return awsCreds;
+            }
+
+            @Override
+            public void refresh() {
+
+            }
+        }).build();
 
         //<set SMS attributes>
-        sendSMSMessage(snsClient, message, phoneNumber, smsAttributes);
+        sendSMSMessage(snsClient, message, phoneNo, smsAttributes);
 
 
     }
-    public static void sendSMSMessage(AmazonSNSClient snsClient, String message,
+    public static void sendSMSMessage(AmazonSNS snsClient, String message,
                                       String phoneNumber, Map<String, MessageAttributeValue> smsAttributes) {
         PublishResult result = snsClient.publish(new PublishRequest()
                 .withMessage(message)
                 .withPhoneNumber(phoneNumber)
                 .withMessageAttributes(smsAttributes));
         System.out.println(result); // Prints the message ID.
-    }*/
+    }
 }

@@ -31,6 +31,11 @@ public class OrderMapper implements RowMapper<Order> {
         order.setCustomerEmail( rs.getString("outlet_email_id"));
         order.setEmployeeEmail( rs.getString("email_id"));
         order.setDistributorEmail( rs.getString("dist_email_id"));
+        order.setDistributorName(rs.getString("cust_name"));
+        order.setCountryCode(rs.getString("isd_code"));
+        order.setCellPhone(rs.getString("cellphone"));
+        order.setDistributorId(rs.getLong("distributor_id"));
+        //order.setEmployeeId( Long.parseLong( rs.getString("user_id")));
 
         return order;
     }

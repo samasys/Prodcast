@@ -12,6 +12,16 @@ public class Product {
     private String productDesc;
     private String productSku;
 
+    public String getProductDisplayName() {
+        return productDisplayName;
+    }
+
+    public void setProductDisplayName(String productDisplayName) {
+        this.productDisplayName = productDisplayName;
+    }
+
+    private String productDisplayName;
+
     public String getSalesTax() {
         return salesTax;
     }
@@ -111,11 +121,24 @@ public class Product {
         this.active = active;
     }
 
+    public String getUom() {
+        return uom;
+    }
+
+    public void setUom(String uom) {
+        this.uom = uom;
+    }
+
     private float unitPrice;
     private String priceType;
     private long categoryId;
     private long subCategoryId;
     private long brandId;
     private boolean active;
+    private String uom;
+    private float retailPrice;
+    public float getRetailPrice(){ return retailPrice;}
+    public void setRetailPrice(float retailPrice) { this.retailPrice=retailPrice; }
+
 
 }

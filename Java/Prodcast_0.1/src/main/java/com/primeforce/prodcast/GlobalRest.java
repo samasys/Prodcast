@@ -3,18 +3,16 @@ package com.primeforce.prodcast;
 import com.primeforce.prodcast.businessobjects.*;
 import com.primeforce.prodcast.businessobjects.Collection;
 import com.primeforce.prodcast.dao.DatabaseManager;
+import com.primeforce.prodcast.dao.Distributor;
 import com.primeforce.prodcast.dto.*;
+import com.primeforce.prodcast.messaging.MessagingManager;
+import com.primeforce.prodcast.messaging.OrderDataProvider;
 import com.primeforce.prodcast.util.Amazon;
+import com.primeforce.prodcast.util.Notifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import javax.inject.Named;
-import javax.mail.Authenticator;
-import javax.mail.Message;
-import javax.mail.PasswordAuthentication;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.text.SimpleDateFormat;
@@ -59,17 +57,56 @@ public class GlobalRest {
     @POST
     @Path("loginp")
     @Produces(MediaType.APPLICATION_JSON)
-    public LoginDTO authenticatePost(@RequestBody UserDTO user) {
+    public LoginDTO authenticatePost(@FormParam("userid") String id, @FormParam("password") String password) {
 
         LoginDTO dto = new LoginDTO();
         Employee employee = null;
 
         try {
-            employee = databaseManager.login(user.getUserId(),user.getPassword());
+            employee = databaseManager.login(id,password);
             if( employee == null ) dto.setSuccess( false );
             else dto.setSuccess(true);
             dto.setEmployee(employee);
         } catch (Exception er) {
+            er.printStackTrace();
+            dto.setError(true);
+            dto.setErrorMessage( er.toString() );
+        }
+        return dto;
+    }
+
+
+    @POST
+    @Path("saveRegistration")
+    @Produces(MediaType.APPLICATION_JSON)
+    public RegistrationDTO registerPost(@FormParam("firstName") String firstName,
+                                 @FormParam("lastName") String lastName,
+
+                                 @FormParam("country") String country,
+                                 @FormParam("emailId") String emailId,
+                                 @FormParam("cellPhone") String cellPhone){
+
+        RegistrationDTO dto = new RegistrationDTO();
+         List<Registration> registration = null;
+
+        try {
+
+            registration= databaseManager.register(firstName, lastName, country, emailId, cellPhone);
+            dto.setResult(registration);
+            Distributor distributor=databaseManager.fetchSuperAdminDetails();
+            String email=distributor.getEmailAddress();
+            String isdCode=databaseManager.fetchSuperAdminCountryId(distributor.getCountry());
+            String phoneNumber=isdCode+distributor.getCellPhone();
+            String[] emailds = { email};
+            String message="The following potential customer is interested in knowing about prodcast.\n" +
+                            "Name : "+firstName+" "+lastName+"\n"+
+                            "Phone no : "+cellPhone+"\n" +
+                            "Email id : " +emailId+"\n"+
+                            "Of the interested person";
+            Notifier.sendNotification(phoneNumber, "New User Request From Prodcast" , message , emailds );
+
+        }
+        catch (Exception er) {
             er.printStackTrace();
             dto.setError(true);
             dto.setErrorMessage( er.toString() );
@@ -109,6 +146,8 @@ public class GlobalRest {
         try {
             List customers = databaseManager.fetchCustomers(Long.parseLong(employeeId));
             dto.setCustomerList(customers);
+            List outstandingBills=databaseManager.fetchOutstandingBillsForCustomers(Long.parseLong(employeeId));
+            dto.setOutstandingBills(outstandingBills);
         }
         catch(Exception er ){
             er.printStackTrace();
@@ -121,14 +160,17 @@ public class GlobalRest {
     @GET
     @Path("customer")
     @Produces(MediaType.APPLICATION_JSON)
-    public CustomerDTO getCustomer(@QueryParam("id") String id) {
+    public CustomerDTO getCustomer(@QueryParam("id") String id,@QueryParam("employeeId") String employeeId) {
         CustomerDTO dto = new CustomerDTO();
 
         try {
-            Customer customer = databaseManager.getCustomer(id);
+            Customer customer = null;
+            customer = databaseManager.getCustomer(id);
             dto.setCustomer( customer );
-
-            customer.setOutstandingBill( databaseManager.fetchOutstandingBills( id ));
+            if( employeeId!=null && employeeId.trim().length()>0)
+                customer.setOutstandingBill( databaseManager.fetchOutstandingBillsForDistOnly( id , employeeId ));
+            else
+                customer.setOutstandingBill( databaseManager.fetchOutstandingBills( id ));
         }
         catch(Exception er ){
             er.printStackTrace();
@@ -158,17 +200,36 @@ public class GlobalRest {
     @GET
     @Path("billdetails")
     @Produces(MediaType.APPLICATION_JSON)
-    public OrderDTO getBillDetails(@QueryParam("billId") String id) {
+    public OrderDTO getBillDetails(@QueryParam("billId") long id,@QueryParam("employeeId") long employeeId,@QueryParam("userRole") String userRole) {
         OrderDTO dto = new OrderDTO();
 
         try {
-            Order order = databaseManager.fetchOrder(Long.parseLong( id) );
-            dto.setOrder(order);
+            Order order = databaseManager.fetchOrder( id,employeeId);
+
+            if(userRole.equals("S"))
+            {
+                if(order.getEmployeeId()!=employeeId)
+                    order=null;
+
+            }
+            if(order==null)
+            {
+                dto.setError(true);
+                dto.setErrorMessage("You Do Not Have Permission To View This Bill");
+                return dto;
+            }
+            else
+            {
+                dto.setOrder(order);
+            }
+
         }
         catch(Exception er){
             er.printStackTrace();
+
             dto.setError( true );
-            dto.setErrorMessage( er.toString() );
+
+            dto.setErrorMessage( "The Bill Does Not Exist For Your Company" );
         }
         return dto;
     }
@@ -177,19 +238,52 @@ public class GlobalRest {
     @POST
     @Path("collection")
     @Produces(MediaType.APPLICATION_JSON)
-    public CustomerDTO addCollectionPayment(@FormParam("employeeId") String employeeId, @FormParam("billId") String billId, @FormParam("amount") String amount , @FormParam("customerId") String customerId)
+    public CustomerDTO addCollectionPayment(@FormParam("employeeId") String employeeId,
+                                            @FormParam("billId") String billId,
+                                            @FormParam("amount") String amount ,
+                                            @FormParam("customerId") String customerId,
+                                            @FormParam("refNo")String refNo,
+                                            @FormParam("refDetail")String refDetail,@FormParam("paymentType")String paymentType)
     {
         CustomerDTO dto = new CustomerDTO();
         try {
-           int rowCount =  databaseManager.updateCollectionPayment(Long.parseLong(employeeId), Long.parseLong(billId), Float.parseFloat(amount));
+           int rowCount =  databaseManager.updateCollectionPayment(Long.parseLong(employeeId), Long.parseLong(billId), Float.parseFloat(amount),refNo,refDetail,paymentType);
             if( rowCount == 0 ) {
                 dto.setError(true);
                 dto.setErrorMessage("Unable to update collection. Please try again!");
             }
             else{
-                Customer customer  = databaseManager.getCustomer( customerId );
-                customer.setOutstandingBill(  databaseManager.fetchOutstandingBills(customerId ));
+                Customer customer  = null;
+                if( customerId!= null && customerId.trim().length()>0 ) {
+                    customer = databaseManager.getCustomer(customerId);
+                    customer.setOutstandingBill(  databaseManager.fetchOutstandingBills(customerId ));
+                }
+                else {
+                    customer = databaseManager.getCustomerForBillId(billId);
+                    customer.setOutstandingBill( databaseManager.fetchOutstandingBillsForCustomers(Long.parseLong( employeeId)));
+                }
+                //long billNumber=
                 dto.setCustomer( customer );
+                try {
+                    Order order;
+                    OrderDataProvider orderDataProvider = new OrderDataProvider();
+                    orderDataProvider.setBillNo(Long.parseLong(billId));
+                    orderDataProvider.setEmployeeId(Long.parseLong(employeeId));
+                    orderDataProvider.setType(1);
+                    orderDataProvider.setAmountPaid(Float.parseFloat(amount));
+                    MessagingManager msgManager = new MessagingManager();
+                    String mailMessage = msgManager.mailMerge(0, orderDataProvider,databaseManager);
+                    String subject = orderDataProvider.getSubject();
+                    order = orderDataProvider.getOrder();
+                    //Amazon.sendSMS(subject, orderDataProvider.getSmsPhoneNumber());
+                    String[] emailds = { order.getCustomerEmail() , order.getEmployeeEmail(), order.getDistributorEmail()  };
+                    Notifier.sendNotification( orderDataProvider.getSmsPhoneNumber() , subject , mailMessage , emailds );
+                }
+                catch(Exception er){
+                    er.printStackTrace();
+                }
+
+
             }
         }
         catch(Exception er){
@@ -221,24 +315,39 @@ public class GlobalRest {
                                     @FormParam("city") String city,
                                     @FormParam("state") String state,
                                     @FormParam("country") String countryId,
+                                    @FormParam("smsAllowed") String smsAllowed,
                                     @FormParam("postalCode") String postalCode,
-                                    @FormParam("notes") String notes   )
+                                    @FormParam("notes") String notes ,
+                                     @FormParam("customerId1") String customerid1 ,
+                                    @FormParam("customerId2") String secondId ,
+                                     @FormParam("customerDesc1") String desc1 ,
+                                    @FormParam("customerDesc2") String desc2 ,
+                                    @FormParam("customerId") String customerId,
+                                    @FormParam("active") String active,
+                                                @FormParam("storeTypeId") String storeType)
     {
         CustomerListDTO dto = new CustomerListDTO();
         try {
-            /*
-            long  employeeId, String customerName, String customerType , long areaId , String weekDay,  String firstName ,
-                    String billingAddress1,String lastName , String emailAddress , String cellPhoneNumber,
-                    String phoneNumber, String unitNumber,
-                    String billingAddress2, String billingAddress3 , String city , String state, String countryId , String postalCode , String notes
-              */
-            int rowCount =  databaseManager.createCustomer(
-                    Long.parseLong(employeeId), customerName, customerType ,
-                    Long.parseLong( areaId ), weekDay, firstName , billingAddress1, lastName,
-                    emailAddress , cellPhoneNumber , phoneNumber, unitNumber,
-                    billingAddress2, billingAddress3 , city ,
-                    state, countryId , postalCode ,notes );
+            int rowCount;
+            if(customerId==null || customerId.trim().length()==0) {
 
+                rowCount = databaseManager.createCustomer(
+                        Long.parseLong(employeeId), customerName, customerType,
+                        Long.parseLong(areaId), weekDay, firstName,  lastName,
+                        emailAddress, cellPhoneNumber, phoneNumber,unitNumber,billingAddress1,
+                        billingAddress2, billingAddress3, city,
+                        state, countryId,postalCode, notes, customerid1,desc1  ,secondId , desc2,smsAllowed,active,Long.parseLong(storeType));
+
+
+            }
+            else
+            {
+                rowCount = databaseManager.updateCustomer( customerName,  customerType , Long.parseLong(areaId),  weekDay,   firstName ,
+                     lastName ,  emailAddress ,  cellPhoneNumber,
+                     phoneNumber, unitNumber, billingAddress1,
+                     billingAddress2,  billingAddress3 ,  city ,  state,  countryId ,  postalCode ,  customerid1, desc1,secondId ,  desc2,smsAllowed,active,Long.parseLong(employeeId),Long.parseLong(storeType),Long.parseLong(customerId) );
+
+            }
 
             if( rowCount == 0 ) {
                 dto.setError(true);
@@ -266,6 +375,7 @@ public class GlobalRest {
 
         System.out.println(orderDto );
         CustomerDTO dto = new CustomerDTO();
+        long start = System.currentTimeMillis();
 
         try {
             //Map OrderDetailDTO to Business Object
@@ -281,29 +391,64 @@ public class GlobalRest {
             }
             List<OrderEntry> orderEntries = new LinkedList<OrderEntry>();
             order.setOrderEntries( orderEntries );
+            HashMap<Long,OrderEntry> map=new HashMap<Long, OrderEntry>();
+
             for (OrderEntryDTO entryDto:orderDto.getEntries()) {
                 OrderEntry entry = new OrderEntry();
                 entry.setQuantity(Integer.parseInt( entryDto.getQuantity()));
                 entry.setProductId( Long.parseLong( entryDto.getProductId() ) );
-                orderEntries.add(entry);
+                if(map.containsKey(entry.getProductId()))
+                {
+                    OrderEntry existing=map.get(entry.getProductId());
+                    existing.setQuantity(existing.getQuantity()+entry.getQuantity());
+                }
+                else
+                {
+                    map.put(entry.getProductId(),entry);
+                    orderEntries.add(entry);
+
+                }
+
             }
 
             float paymentAmount = Float.parseFloat( orderDto.getPaymentAmount());
-            long billNumber = databaseManager.saveOrder(order,paymentAmount);
+            String refNo=orderDto.getRefNO();
+            String refDetail=orderDto.getRefDetail();
+            String paymentType=orderDto.getPaymentType();
+            String orderStatus=orderDto.getOrderStatus();
+            long billNumber = databaseManager.saveOrder(order,paymentAmount,refNo,refDetail,paymentType,orderStatus);
+            //int rowCount=databaseManager.updateOrderStatus(billNumber,orderStatus);
 
+            System.out.println("Order Saved "+(System.currentTimeMillis() - start ));
             Customer customer  = databaseManager.getCustomer( orderDto.getCustomerId() );
             customer.setOutstandingBill(  databaseManager.fetchOutstandingBills(orderDto.getCustomerId() ));
             dto.setCustomer( customer );
+            System.out.println("After Outstanding Bill "+(System.currentTimeMillis() - start ));
+           try {
+                OrderDataProvider orderDataProvider = new OrderDataProvider();
+                orderDataProvider.setBillNo(billNumber);
 
-            try{
-                Amazon.sendOrderEmail( databaseManager.fetchOrder( billNumber ));
+                orderDataProvider.setEmployeeId(order.getEmployeeId());
+                orderDataProvider.setAmountPaid(paymentAmount);
+                MessagingManager msgManager = new MessagingManager();
+
+                String mailMessage = msgManager.mailMerge(0, orderDataProvider,databaseManager);
+                String subject = orderDataProvider.getSubject();
+                order = orderDataProvider.getOrder();
+                //Amazon.sendSMS(subject, orderDataProvider.getSmsPhoneNumber());
+                String[] emailds = { order.getCustomerEmail() , order.getEmployeeEmail(), order.getDistributorEmail()  };
+                Notifier.sendNotification( orderDataProvider.getSmsPhoneNumber() , subject , mailMessage , emailds );
             }
             catch(Exception er){
                 er.printStackTrace();
             }
+            System.out.println("AFter Notification "+(System.currentTimeMillis() - start ));
 
-            dto.setError( false );
-        } catch (Exception er) {
+
+
+
+        }
+        catch (Exception er) {
             er.printStackTrace();
             dto.setError(true);
             dto.setErrorMessage( er.toString() );
@@ -317,14 +462,17 @@ public class GlobalRest {
 
         ProdcastDTO dto = new ProdcastDTO();
         try {
-            if(emailId != null ) {
+            if(emailId != null )
+            {
                 emailId = emailId.toLowerCase();
 
                 String password = databaseManager.getPasswordFromEmail(emailId);
 
-                if (password != null) {
+                if (password != null)
+                {
                     Amazon.sendEmail(emailId, "Password email from PRODCAST", "Your password is "+password+"\r\n");
-                } else {
+                }
+                else {
                     dto.setError(true);
                     dto.setErrorMessage("The email id is not registered with PRODCAST");
                 }
@@ -339,21 +487,33 @@ public class GlobalRest {
 
 
     }
-    @GET
+
+
+
+
+    @POST
     @Path("changePassword")
     @Produces(MediaType.APPLICATION_JSON)
-    public ProdcastDTO changePassword(@QueryParam("employeeId") String employeeId, @QueryParam("oldPassword") String oldPassword, @QueryParam("newPassword") String newPassword) throws Exception{
+    public ProdcastDTO changePasswordAuth(@FormParam("employeeId") String employeeId, @FormParam("oldPassword") String oldPassword, @FormParam("newPassword") String newPassword) throws Exception{
 
         ProdcastDTO dto = new ProdcastDTO();
         try {
+            Employee employee=databaseManager.getEmployee(Long.parseLong(employeeId));
+            System.out.println(employee);
             String email = databaseManager.changePassword(Long.parseLong(employeeId) , oldPassword , newPassword );
+            String[] emailIds={email};
+
+            String phoneNumber=employee.getCountryCode()+employee.getCellphone();
             if( email == null ){
                 dto.setError(true);
                 dto.setErrorMessage("The Old Password did not match. Please reenter old password again");
 
             }
             else {
-                Amazon.sendEmail(email, "Password changed email from PRODCAST", "Your password has been changed in PRODCAST\r\n");
+                //        Amazon.sendEmail(email,"Password changed email from PRODCAST" , "Your password has been changed in PRODCAST\r\n");
+                //   Amazon.sendSMS("Your password has been changed in PRODCAST\r\n",phoneNumber);
+                Notifier.sendNotification( phoneNumber , "Your password has been changed in PRODCAST\r\n" , "Password Changed Notification From PRODCAST",emailIds );
+
             }
         } catch (Exception er){
             er.printStackTrace();
@@ -365,10 +525,18 @@ public class GlobalRest {
 
 
     }
+
+
+
+
     @GET
     @Path("salesReport")
     @Produces(MediaType.APPLICATION_JSON)
-    public ReportDTO getReport(@QueryParam("reportType") String reportType, @QueryParam("employeeId") String employeeId, @QueryParam("selectedEmpId") String selectedEmployeeId,@QueryParam("startDate") String customStartDate , @QueryParam("endDate") String customEndDate ) {
+    public ReportDTO getReport(@QueryParam("reportType") String reportType,
+                               @QueryParam("employeeId") String employeeId,
+                               @QueryParam("selectedEmpId") String selectedEmployeeId,
+                               @QueryParam("startDate") String customStartDate ,
+                               @QueryParam("endDate") String customEndDate ) {
         ReportDTO dto = new ReportDTO();
         final long DAY = 24*60*60*1000;
         try {
@@ -422,7 +590,7 @@ public class GlobalRest {
             List<Collection> collections = null;
             List<Expense> expenses = null;
             if( selectedEmployeeId!= null && selectedEmployeeId.equals("ALL") ){
-                orders = databaseManager.fetchSalesReportForDistributor(startDate, endDate , Long.parseLong(employeeId ));
+              orders = databaseManager.fetchSalesReportForDistributor(startDate, endDate , Long.parseLong(employeeId ));
                 collections = databaseManager.fetchCollectionReportForDistributor(startDate, endDate , Long.parseLong(employeeId ));
                 expenses = databaseManager.fetchExpenseReportForDistributor( startDate,  endDate , employeeId);
             }
@@ -479,12 +647,14 @@ public class GlobalRest {
     @GET
     @Path("getCountries")
     @Produces(MediaType.APPLICATION_JSON)
-    public AdminDTO getCountries() {
-        AdminDTO dto = new AdminDTO();
+    public CountryDTO getCountries() {
+        CountryDTO dto = new CountryDTO();
 
         try {
             List countries = databaseManager.fetchCountries();
             dto.setResult( countries );
+            List timezones=databaseManager.getTimezones();
+            dto.setTimezones(timezones);
         }
         catch(Exception er){
             er.printStackTrace();
@@ -493,5 +663,24 @@ public class GlobalRest {
         }
         return dto;
     }
+    @GET
+    @Path("getStoreType")
+    @Produces(MediaType.APPLICATION_JSON)
+    public AdminDTO getStoreType() {
+        AdminDTO dto = new AdminDTO();
 
+        try {
+            List storeTypes = databaseManager.fetchStoreType();
+            dto.setResult( storeTypes );
+
+        }
+        catch(Exception er){
+            er.printStackTrace();
+            dto.setError( true );
+            dto.setErrorMessage( er.toString() );
+        }
+        return dto;
+    }
 }
+
+

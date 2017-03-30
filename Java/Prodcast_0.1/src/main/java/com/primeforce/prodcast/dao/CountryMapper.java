@@ -7,7 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * Created by Hai on 8/18/2016.
+ * Created by Nandhini on 8/18/2016.
  */
 public class CountryMapper implements RowMapper<Country> {
     public Country    mapRow(ResultSet rs, int rowNum ) throws SQLException {

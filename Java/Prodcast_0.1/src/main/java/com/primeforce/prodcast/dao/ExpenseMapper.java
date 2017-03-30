@@ -22,6 +22,7 @@ public class ExpenseMapper implements RowMapper<Expense> {
         expense.setExpenseAmount(rs.getFloat("amount"));
         expense.setDescription( rs.getString("desc1"));
         expense.setDescription2(rs.getString("desc2"));
+        expense.setPayMode(rs.getString("pay_mode"));
         return expense;
     }
 }

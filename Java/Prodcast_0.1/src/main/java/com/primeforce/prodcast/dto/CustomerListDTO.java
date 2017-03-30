@@ -1,5 +1,6 @@
 package com.primeforce.prodcast.dto;
 
+import com.primeforce.prodcast.businessobjects.Bill;
 import com.primeforce.prodcast.businessobjects.Customer;
 
 import java.util.List;
@@ -9,13 +10,24 @@ import java.util.List;
  */
 public class CustomerListDTO extends ProdcastDTO {
 
-    public List<Customer> getCustomerList() {
+    public List<Customer> getCustomerList()
+    {
         return customerList;
     }
 
-    public void setCustomerList(List<Customer> customerList) {
+    public void setCustomerList(List<Customer> customerList)
+    {
         this.customerList = customerList;
     }
 
     private List<Customer> customerList;
+    private List<Bill> outstandingBills;
+
+    public List<Bill> getOutstandingBills() {
+        return outstandingBills;
+    }
+
+    public void setOutstandingBills(List<Bill> outstandingBills) {
+        this.outstandingBills = outstandingBills;
+    }
 }

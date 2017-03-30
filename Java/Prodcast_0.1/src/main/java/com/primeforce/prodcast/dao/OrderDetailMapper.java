@@ -21,6 +21,7 @@ public class OrderDetailMapper implements RowMapper<OrderEntry> {
         oe.setSalesTax(oe.getUnitPrice()*oe.getQuantity()*rs.getFloat("sales_tax")/100);
         oe.setOtherTax(oe.getUnitPrice()*oe.getQuantity()*rs.getFloat("other_tax")/100);
         oe.setSubtotal(rs.getFloat("subtotal"));
+
         return oe;
     }
 }

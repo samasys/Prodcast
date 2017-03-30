@@ -29,6 +29,10 @@ public class ProductMapper implements RowMapper<Product> {
         product.setPriceType( rs.getString("price_type"));
         product.setSalesTax(rs.getString("sales_tax"));
         product.setOtherTax(rs.getString("other_tax"));
+        product.setUom(rs.getString("uom"));
+        product.setRetailPrice(rs.getFloat("retailprice"));
+        product.setProductDisplayName(rs.getString("product_brand_name")+" "+product.getProductName()+" "+product.getUom());
+
         return product;
     }
 }

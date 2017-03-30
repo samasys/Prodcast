@@ -1,7 +1,7 @@
 package com.primeforce.prodcast.businessobjects;
 
 /**
- * Created by Hai on 8/18/2016.
+ * Created by Nandhini on 8/18/2016.
  */
 public class Country {
     private String countryId,countryName,currecyId,currencyName;
